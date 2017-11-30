@@ -70,7 +70,7 @@
 						.show-more-details[ng-if="provProfileCtrl.provProfileConfigs[provProfile.databaseID].getDetailsProgress.isIdle"]
 							button.show-more[ng-click="provProfileCtrl.showProvProfileValidatedDetails(provProfile)"]
 								span.container
-									span.icon[class="{{ provProfileCtrl.provProfileConfigs[provProfile.databaseID].validationStatuses.globalValidationStatus }}"] = svg("dot")
+									span.icon[ng-class="provProfileCtrl.provProfileConfigs[provProfile.databaseID].validationStatuses.globalValidationStatus"] = svg("dot")
 									span == data[:strings][:code_signing][:prov_profile][:article][:details][:show_prov_profile_validated_details_button]
 									span.arrow = svg("arrow_slim-down")
 				p.notification.error[ng-if="provProfileCtrl.provProfiles.length >= provProfileCtrl.maximumProvProfilesCount"] == data[:strings][:code_signing][:prov_profile][:upload_count_limit_reached]
@@ -83,42 +83,42 @@
 			.popup-body.snowflake#prov-profile-details-popup-body.vertical-scroll
 				header.closeable.left-aligned
 					span.popup-title
-						b[ng-bind="provProfileCtrl.selectedProvProfile.displayName()"]
+						strong[ng-bind="provProfileCtrl.selectedProvProfile.displayName()"]
 					span.popup-close[ng-click="provProfileCtrl.validatedProvProfileDetailsPopup.isVisible = false"] = svg("cross")
 				article
 					aside.sidebar
 						.menu
-							button.menu-option[ng-repeat="menu in provProfileCtrl.menus" ng-click="provProfileCtrl.selectedMenu = menu" ng-class="{'selected': menu == provProfileCtrl.selectedMenu}"]
+							button.menu-option[ng-repeat="menu in provProfileCtrl.menus" ng-click="provProfileCtrl.selectedMenu = menu" class="{{ menu.cssClass }}" ng-class="{'selected': menu == provProfileCtrl.selectedMenu}"]
 								span.title[ng-bind="menu.title"]
-								span.status[ng-if="menu.cssClass == 'matching-certificates' || menu.cssClass == 'devices'" ng-class="menu.validationStatus()"] = svg("dot")
-								span.arrow[ng-if="menu.cssClass == 'capabilities'"] = svg("arrow_slim-down")
+								span.status[ng-class="menu.validationStatus()"] = svg("dot")
+								span.arrow = svg("arrow_slim-down")
 						.menu.small
 							select.menu-selector[ng-model="provProfileCtrl.selectedMenu" ng-model-options="{getterSetter: true}" ng-options="menu.title for menu in provProfileCtrl.menus" ng-class="{ 'selected' : menu == provProfileCtrl.selectedMenu }"]
 					.content.vertical-scroll[ng-switch="provProfileCtrl.selectedMenu.id"]
 						ul.matching-certificates[ng-switch-when="matching-certificates"]
 							li.identity[ng-repeat="identity in provProfileCtrl.selectedProvProfile.developerCertificateIdentities"]
-								.status[class="{{ identity.statusCSSclass }}"]
-									span[ng-show="identity.statusCSSclass == 'in-progress'"] = svg("dot")
-									span[ng-show="identity.statusCSSclass == 'error'"] = svg("triangle")
-									span[ng-show="identity.statusCSSclass == 'success'"] = svg("check-in-circle")
+								.status[ng-class="identity.statusCSSclass"]
+									span[ng-if="identity.statusCSSclass == 'in-progress'"] = svg("dot")
+									span[ng-if="identity.statusCSSclass == 'error'"] = svg("triangle")
+									span[ng-if="identity.statusCSSclass == 'success'"] = svg("check-in-circle")
 								.details
 									.common-name[ng-bind="identity.commonName"]
 									.serial[ng-bind="identity.serial"]
 						ul.devices[ng-switch-when="devices"]
 							li.device[ng-repeat="aProvisionedDevice in provProfileCtrl.selectedProvProfile.provisionedDevices"]
-								.status[class="{{ aProvisionedDevice.statusCSSclass }}"]
-									span[ng-show="aProvisionedDevice.statusCSSclass == 'in-progress'"] = svg("dot")
-									span[ng-show="aProvisionedDevice.statusCSSclass == 'error'"] = svg("triangle")
-									span[ng-show="aProvisionedDevice.statusCSSclass == 'success'"] = svg("check-in-circle")
+								.status[ng-class="aProvisionedDevice.statusCSSclass"]
+									span[ng-if="aProvisionedDevice.statusCSSclass == 'in-progress'"] = svg("dot")
+									span[ng-if="aProvisionedDevice.statusCSSclass == 'error'"] = svg("triangle")
+									span[ng-if="aProvisionedDevice.statusCSSclass == 'success'"] = svg("check-in-circle")
 								.details
 									.udid-info
 										strong.label> == data[:strings][:code_signing][:prov_profile][:prov_profile_details_popup][:devices][:udid] + ":"
 										span.udid[ng-bind="aProvisionedDevice.udid"]
 									.registration-info
 										span.not-registered[ng-if="aProvisionedDevice.statusCSSclass == 'error'"]
-											b == data[:strings][:code_signing][:prov_profile][:prov_profile_details_popup][:device_registration_details][:not_registered]
+											strong == data[:strings][:code_signing][:prov_profile][:prov_profile_details_popup][:device_registration_details][:not_registered]
 										span.registered[ng-if="aProvisionedDevice.statusCSSclass == 'success'"]
-											b == data[:strings][:code_signing][:prov_profile][:prov_profile_details_popup][:device_registration_details][:registered]
+											strong == data[:strings][:code_signing][:prov_profile][:prov_profile_details_popup][:device_registration_details][:registered]
 											.username[ng-bind="'@' + aProvisionedDevice.registeredBy"]
 						ul.capabilities[ng-switch-when="capabilities"]
 							li.capability[ng-repeat="description in provProfileCtrl.capabilityDescriptionsOfProvProfile() track by $index" ng-bind="description"]

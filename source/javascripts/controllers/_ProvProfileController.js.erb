@@ -208,10 +208,12 @@ angular.module("BitriseWorkflowEditor").controller("ProvProfileController", func
 				provProfile.developerCertificateIdentities = _.map(data.developerCertificateIdentities, function(anIdentity) {
 					return {
 						statusCSSclass: "in-progress",
-						databaseID: anIdentity.databaseID,
-						isProcessed: anIdentity.isProcessed,
-						uploadFileName: anIdentity.uploadFileName,
-						isExpose: anIdentity.isExpose
+						commonName: anIdentity.commonName,
+						startDate: anIdentity.startDate,
+						endDate: anIdentity.endDate,
+						teamName: anIdentity.teamName,
+						teamID: anIdentity.teamID,
+						serial: anIdentity.serial
 					};
 				});
 				provProfile.provisionedDevices = _.map(data.provisionedDevices, function(aProvisionedDevice) {
@@ -223,14 +225,12 @@ angular.module("BitriseWorkflowEditor").controller("ProvProfileController", func
 				});
 				provProfile.capabilityKeys = data.capabilityKeys;
 
+				viewModel.provProfileConfigs[provProfile.databaseID].getDetailsProgress.success();
 				resolve();
 			}, function(error) {
+				viewModel.provProfileConfigs[provProfile.databaseID].getDetailsProgress.error(error);
 				reject(error);
 			});
-		}).then(function() {
-			viewModel.provProfileConfigs[provProfile.databaseID].getDetailsProgress.success();			
-		}, function(error) {
-			viewModel.provProfileConfigs[provProfile.databaseID].getDetailsProgress.error(error);
 		});
 	};
 
@@ -244,7 +244,6 @@ angular.module("BitriseWorkflowEditor").controller("ProvProfileController", func
 			validateTestDevices(provProfile),
 			validateCertificates(provProfile)
 		]).then(function() {
-
 			if (viewModel.provProfileConfigs[provProfile.databaseID].validationStatuses.certificateValidationsStatus == "error" || viewModel.provProfileConfigs[provProfile.databaseID].validationStatuses.deviceValidation == "error") {
 				viewModel.provProfileConfigs[provProfile.databaseID].validationStatuses.globalValidationStatus = "error";
 			}
@@ -267,48 +266,51 @@ angular.module("BitriseWorkflowEditor").controller("ProvProfileController", func
 	function validateTestDevices(provProfile) {
 		viewModel.validateTestDevicesProgress.start("<%= data[:strings][:code_signing][:prov_profile][:validate_test_devices][:in_progress] %>");
 
-		return requestService.fetchAllTestDevicesOfRepository().then(function(registeredTestDevices) {
-			_.each(provProfile.provisionedDevices, function(aProvisionedDevice) {
-				var registeredTestDeviceOnBitrise = _.find(registeredTestDevices.devices, function(aDevice) {
-					return aDevice.deviceIdentifier == aProvisionedDevice.udid;
+		return $q(function(resolve, reject) {
+			requestService.fetchAllTestDevicesOfRepository().then(function(registeredTestDevices) {
+				_.each(provProfile.provisionedDevices, function(aProvisionedDevice) {
+					var registeredTestDeviceOnBitrise = _.find(registeredTestDevices.devices, {deviceIdentifier: aProvisionedDevice.udid});
+
+					if (registeredTestDeviceOnBitrise) {
+						aProvisionedDevice.statusCSSclass = "success";
+						aProvisionedDevice.registeredBy = registeredTestDeviceOnBitrise.owner.username;
+					}
+					else {
+						aProvisionedDevice.statusCSSclass = "error";
+						aProvisionedDevice.registeredBy = undefined;
+					}
 				});
 
-				if (registeredTestDeviceOnBitrise) {
-					aProvisionedDevice.statusCSSclass = "success";
-					aProvisionedDevice.registeredBy = registeredTestDeviceOnBitrise.owner.username;
-				}
-				else {
-					aProvisionedDevice.statusCSSclass = "error";
-					aProvisionedDevice.registeredBy = undefined;
-				}
+				viewModel.provProfileConfigs[provProfile.databaseID].validationStatuses.deviceValidationStatus = !_.any(provProfile.provisionedDevices, {statusCSSclass: "error"}) ? "success" : "error";
+
+				viewModel.validateTestDevicesProgress.success();
+				resolve();
+			}, function(error) {
+				viewModel.validateTestDevicesProgress.error(error);
+				reject();
 			});
-
-			var areAllValidationsSuccessfull = !_.any(provProfile.provisionedDevices, {
-				statusCSSclass: "error"
-			});
-
-			viewModel.provProfileConfigs[provProfile.databaseID].validationStatuses.deviceValidationStatus = areAllValidationsSuccessfull ? "success" : "error";
-
-			viewModel.validateTestDevicesProgress.success();
-		}, function(error) {
-			viewModel.validateTestDevicesProgress.error(error);
 		});
 	}
 
-	function validateCertificates(provProfile) {
-		viewModel.validateCertificatesProgress.start("<%= data[:strings][:code_signing][:prov_profile][:validate_certificates][:in_progress] %>");
+	function validateCertificates(provProfile, originalDeferer) {
+		var deferer = originalDeferer ? originalDeferer : $q.defer();
 
+		if (!viewModel.validateCertificatesProgress.isInProgress) {
+			viewModel.validateCertificatesProgress.start("<%= data[:strings][:code_signing][:prov_profile][:validate_certificates][:in_progress] %>");
+		}
+		
 		if (certificateService.progress.isInProgress) {
 			$timeout(function() {
-				validateCertificates(provProfile);
+				validateCertificates(provProfile, deferer);
 			}, validateCertificatesReloadIntervalInSeconds * 1000);
+		}
+		else if (certificateService.progress.isError) {
+			deferer.reject();
 		}
 		else {
 			_.each(provProfile.developerCertificateIdentities, function(anIdentity) {
 				if (certificateService.progress.isError) {
 					anIdentity.statusCSSclass = "error";
-
-					return false;
 				}
 				else {
 					var isIdentityRegistered = _.any(certificateService.certificateDetailStateMaps, function(aCertificateDetailStateMapsItem) {
@@ -318,21 +320,17 @@ angular.module("BitriseWorkflowEditor").controller("ProvProfileController", func
 					});
 
 					anIdentity.statusCSSclass = isIdentityRegistered ? "success" : "error";
-						
-					return isIdentityRegistered;
 				}
 			});
 
-			var areAllValidationsSuccessfull = !_.any(provProfile.developerCertificateIdentities, {
-				statusCSSclass: "error"
-			});
-
-			viewModel.provProfileConfigs[provProfile.databaseID].validationStatuses.certificateValidationsStatus = areAllValidationsSuccessfull ? "success" : "error";
+			viewModel.provProfileConfigs[provProfile.databaseID].validationStatuses.certificateValidationsStatus = !_.any(provProfile.developerCertificateIdentities, {statusCSSclass: "error"}) ? "success" : "error";
 
 			viewModel.validateCertificatesProgress.success();
+
+			deferer.resolve();
 		}
 
-		return $q.when();
+		return deferer.promise;
 	}
 
 	function isExposeGetterSetterForProvProfile(aProvProfile, progress) {

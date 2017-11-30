@@ -822,7 +822,7 @@
 		@include ellipsis-oneliner;
 		border-bottom: 1px solid $def-mediumlightgrey;
 
-		.popup-title b {
+		.popup-title strong {
 			@include ellipsis-oneliner;
 			font-size: 12px;
 			color: black;
@@ -866,6 +866,14 @@
 						.arrow svg {
 							fill: white;
 						}
+					}
+
+					&.matching-certificates .arrow, &.devices .arrow {
+						display: none;
+					}
+
+					&.capabilities .status {
+						display: none;
 					}
 
 					.title {
@@ -938,7 +946,7 @@
 
 					.status {
 						@include display-flex;
-						@include flex-direction(center);
+						@include align-items(center);
 						@include flex-shrink(0);
 						@include size(18px);
 
@@ -1010,17 +1018,17 @@
 							text-align: lft;
 							font-size: 10px;
 
-							.not-registerd b, .registered b {
+							.not-registerd strong, .registered strong {
 								text-transform: uppercase;
 							}
 
-							.not-registered b {
+							.not-registered strong {
 								color: $def-danger;
 							}
 
 							.registered {
 
-								b {
+								strong {
 									color: $def-mediumdarkgrey;
 								}
 
